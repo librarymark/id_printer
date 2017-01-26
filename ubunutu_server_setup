@@ -1,0 +1,56 @@
+Ubuntu 16.04 server (install ssh, lamp, samba)
+sudo su (passwd)
+as root, passwd
+in /etc/ssh/sshd_congfig: PermitRootLogin yes
+/etc/init.d/ssh restart
+apt-get update
+apt-get dist-upgrade
+add line to /etc/sudoers: www-data ALL=(ALL) NOPASSWD:ALL
+
+apt-get install mc cups chromium-browser htop phpmyadmin \
+fluxbox gnome-terminal system-config-printer-gnome libreoffice \
+unoconv imagemagick nmon bmon gnome-system-monitor firefox \
+tightvncserver libaudio2 network-manager-gnome xfce4
+
+install webmin:
+	wget (webmin .deb file)
+	dpkg -i (webmin .deb file)
+	apt-get -f install (to fix unresolved dependencies from previous step.)
+
+copy id_generator files
+
+create database id_cards
+Create DB user in mysql client: 
+> grant all privileges on id_cards.* to 'id_cards'@'localhost' identified by 'id_cards';
+> flush privileges;
+
+populate db from bash prompt:
+
+mysql -u id_cards -pid_cards id_cards < id_cards.sql
+
+install zebra printer driver
+
+install any fonts used in template - copy fonts to /usr/share/fonts/truetype then run fc-cache -fv
+
+check permissions on files (make sure scripts are executable and everything is owned by www-data)
+
+enable https:
+	sudo a2enmod ssl
+	cd /etc/apache2/sites-available
+	ln -s ../sites-available/default-ssl.conf . (the final dot is important)
+	service apache2 restart
+
+Create template:
+Template is a LibreOffice .fodt file that has markers in it to be replaced by the id system. The markers are:
+@@LAST_NAME@@
+@@FIRST_NAME@@ 
+@@MIDDLE_INITIAL@@
+@@BARCODE_TEXT@@
+@@MUGSHOT_IMAGE_B64@@
+@@BARCODE_IMAGE_64@@
+
+
+
+
+
+

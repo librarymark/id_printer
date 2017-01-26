@@ -1,0 +1,593 @@
+// global variables
+//var current_id_number = "Number assigned at print time";
+//var timerForLoadingResult;
+//var image_available = false;
+//var valid_card = false;
+//var valid_image = false;
+//var valid_cropped_image = false;
+//var info;
+var preview_data_url;
+var id_number = 'auto_generate';
+var id_override = false;
+var idle_time_milli = idle_time * 60 * 1000
+
+//=============================================================
+// DOCUMENT READY
+//=============================================================
+jQuery(document).ready(function() { 
+	$('#snapshot').hide();	
+	$('#canvas').hide();	
+	$('#btnPreviewAndPrint').hide();
+	$('#btnRetake').hide();
+	$('#divImageAdjust').hide();
+	$("#id_number").numeric()
+	initialize_camera();
+	JQD.go();
+	
+	//=============================================================
+	// Page Time Out section
+	//=============================================================
+	/*
+	$('#timeout').text('page will reload in ' + msToTime(idle_time_milli) );
+	$( document ).idleTimer( {
+		timeout:idle_time_milli,
+    });
+
+	 $( document ).on( "idle.idleTimer", function(event, elem, obj){
+		window.location=window.location;
+		//location.reload();
+	});
+	
+	myInterval = setInterval(update_timout_message, 1000);
+	// END Page Time Out section
+*/
+	
+	//=============================================================
+	// check for call_workflows cookie and set checkbox accordingly
+	//=============================================================
+	if ( $.cookie('call_workflows') == 'yes'){
+		$('#chkbxCallWorkflows').attr('checked', true);
+	}else{
+		$('#chkbxCallWorkflows').attr('checked', false);
+	}	
+	// END check for call_workflows cookie and set checkbox accordingly
+	
+
+	//=============================================================
+	// check for use_paster cookie and set checkbox accordingly
+	//=============================================================
+	if ( $.cookie('paste_id') == 'yes'){
+		$('#chkbxPasteID').attr('checked', true);
+	}else{
+		$('#chkbxPasteID').attr('checked', false);
+	}
+	// END check for use_paster cookie and set checkbox accordingly
+
+	//=============================================================
+	// Checkbox Call Workflows click (in config menu)
+	//=============================================================
+	$('#chkbxCallWorkflows').click(function(c) {
+		if ($('#chkbxCallWorkflows').attr('checked')){
+			$.cookie( 'call_workflows', 'yes', { expires: 4000, path: '/' } );
+		}else{
+			$.cookie( 'call_workflows', 'no', { expires: 4000, path: '/' } );		
+		}
+	});	// Checkbox Call Workflows click (in config menu)
+
+	//=============================================================
+	// Checkbox Paste ID click (in config menu)
+	//=============================================================
+	$('#chkbxPasteID').click(function(c) {
+		if ($('#chkbxPasteID').attr('checked')){
+			$.cookie( 'paste_id', 'yes', { expires: 4000, path: '/' } );
+		}else{
+			$.cookie( 'paste_id', 'no', { expires: 4000, path: '/' } );		
+		}
+	});// END Checkbox Paste ID click (in config menu)
+	
+	$('#btnRetake').click(function(){
+			untake_snapshot();
+	});
+	
+
+	//=============================================================
+	// Image Adjust Buttons
+	//=============================================================
+/*
+	$('#btnImageReset').click(function() {
+		caman.reset();
+		caman.render();
+		resetFilters();
+	});
+*/
+
+	$("#brightness" ).slider({
+		min:-50,
+		max:50,
+		value:0
+	});	
+	
+	$("#contrast" ).slider({
+		min:-20,
+		max:20,
+		value:0
+	});	
+
+	/*
+	$("#sharpen" ).slider({
+		min:0,
+		max:50,
+		value:0
+	});	
+*/
+	
+	
+	$('#btnImageReset').click(function(e){
+		e.preventDefault();
+		// from http://stackoverflow.com/questions/15032973/how-can-i-change-out-an-image-using-camanjs
+		//$("#preview").removeAttr("data-caman-id");
+		$("#contrast").slider('value', "0");
+		$("#brightness" ).slider('value', "0");
+		//$("#sharpen" ).slider('value', "0");
+		 return false;
+	});
+
+	$('#contrast, #brightness, #sharpen').on( "slidechange", function( event, ui ) {
+		applyFilters();
+	});
+	
+	function applyFilters() {
+		var brightness_val =  $("#brightness").slider( "value" );
+		var contrast_val = $("#contrast").slider( "value" );
+		//var sharpen_val = $("#sharpen").slider( "value" );
+		Caman("#preview", function () {
+		  this.revert(true);
+		  this.brightness(brightness_val);
+		  this.contrast(contrast_val);
+		  //this.sharpen(sharpen_val );
+		  this.render();
+		});
+	}
+
+	//=============================================================
+	// click override auto-generate checkbox
+	//=============================================================
+	$('#chk_override_autogenerate').click(function(e){
+		if($("#chk_override_autogenerate" ).is(":checked")) {
+			alert("Please be careful when entering the ID number.\n\nTip: To insure accuracy, copy and paste from Workflows");
+			$("#id_number").prop('disabled', false);
+			$("#id_number").val('');
+			$("#id_number").focus();
+			id_override = true;
+		}else{
+			$("#id_number").prop('disabled', true);
+			$("#id_number").val(' (Auto-Generate)');
+			id_override = false;
+		}
+	})	// END click override auto-generate checkbox
+	
+	
+	//=============================================================
+	// Preview and Print button click
+	//=============================================================
+	$('#btnPreviewAndPrint').click(function(c) {
+		console.log('selected_width: '+selected_width);
+		if( !$('#fname').val() ||  !$('#lname').val()) {
+			alert("You need to enter at least the patron's first and last name!");
+			return false;
+		}		 
+		// check for cropped image
+		if( selected_width == 0 ||  selected_height == 0) {
+			alert("You must crop the image first!");
+			return false;
+		}
+		
+		// if auto-number override is on, make sure the number entered is 14 digits long. 
+		if( $('#chk_override_autogenerate').is(':checked')){
+			var id_num_length =$('#id_number').val().length;
+			if (id_num_length != 14){
+				alert("The ID number needs to be 14 digits long. You entered " + id_num_length + '.');
+				return false;
+			}
+		}  
+		
+		
+		// check for valid ID number if using override
+		// remove the cropper 
+		//$('#snapshot').imgAreaSelect({remove:true});
+		$('#window_print_preview').css('display', 'inline');
+		$('#window_print_preview').css('z-index', '20');
+		$('#view_front').removeAttr('disabled');
+		$('#view_back').removeAttr('disabled');
+		$('#print').removeAttr('disabled');
+
+		//JQD.util.window_flat();
+		$('#window_print_preview').addClass('window_stack');
+		//$('#icon_dock_print').show('fast');
+		id_number = update_id();
+	
+		// Generate the new card based on the above data
+		update_card_preview();
+	});
+
+	//=============================================================
+	// View Front click 
+	//=============================================================
+	$('#view_front').click(function(c) {
+		// this needs to be something like this instead:
+		$('#card_preview_image').attr("src","assets/php/show_card_image.php?side=front&session_id="+session_id);
+		
+	});	// END View Front click 
+
+	//=============================================================
+	// View Back click 
+	//=============================================================
+		$('#view_back').click(function(c) {
+		// this needs to be something like this instead:
+		$('#card_preview_image').attr("src","assets/php/show_card_image.php?side=back&session_id="+session_id);
+	});	// END View Back click 
+
+
+	//=============================================================
+	// About ID Generator Menu click
+	//=============================================================
+	$('#about_id_generator').click(function(event){
+		event.preventDefault();
+		alert('Willard web-based ID generator - written by Mark Ehle')
+		return false;
+	})	// END About ID Generator Menu click
+
+	//=============================================================
+	// View Sesion Vars Menu click
+	//=============================================================
+	$('#ViewSessionVars').click(function(event){
+		event.preventDefault();
+		$.get("https://id_generator/assets/php/session_vars.php", function( data ) {
+		$("<div>"+data+"</div>").dialog({
+			height:400,
+			width:650,
+			modal:true
+		});
+		//alert( "Data Loaded: " + data );
+		return false;
+		}
+	);
+
+	})// END About ID Generator Menu click
+
+	//=============================================================
+	// Print button click
+	//=============================================================
+	$('#print').click(function(c) {
+		$('#print').attr('disabled', true)
+		var call_workflows = $('#chkbxCallWorkflows').attr('checked'); 
+		var paste_id = $('#chkbxPasteID').attr('checked'); 
+
+		if (call_workflows == 'checked'){
+			var call_workflows = "Y";
+		}else{
+			var call_workflows = "N";
+		}
+
+		if (paste_id == 'checked'){
+			var paste_id = "Y";
+		}else{
+			var paste_id = "N";
+		}
+
+		// just make call paste_id permenant
+		var paste_id = "Y";
+		
+		var patron_fname = $('#fname').val();
+		var patron_lname = $('#lname').val();
+		var patron_mname = $('#mname').val();
+		var id_number = update_id()
+
+		$.post("assets/php/print.php", { 
+			session_id: session_id, 
+			patron_fname: patron_fname,
+			patron_lname: patron_lname,
+			patron_mname: patron_mname,
+			patron_id: id_number,
+			call_workflows: call_workflows,
+			paste_id: paste_id
+			},
+			function(data) {
+				if ( $.cookie('call_workflows') != 'checked'){
+					// paste here?
+					
+					//alert("ID number printed: " + data);
+					$('#start_over').click();
+				}else{
+					$('#start_over').click();
+				}
+		});
+	});	// end print button click
+	
+	//=============================================================
+	// Reset Icon click
+	//=============================================================
+	$('#reset_icon').click(function(c) {
+		$('#start_over').click();
+	});// END Reset Icon click
+
+	
+	//=============================================================
+	// Update Card Preview function
+	//=============================================================
+	function update_card_preview() {
+		if (id_override){
+			$('#id_number_print_message').html('(ID card will be printed with ID number shown)');
+		}else{
+			$('#id_number_print_message').html('(ID number will be assigned upon print)');
+		}
+		//$('#snapshot').imgAreaSelect({remove:true});
+		$('#card_preview_image').attr("src","assets/images/crop_ajax-loader.gif");
+		$('#print').hide();
+		$('#view_front').hide();
+		$('#view_back').hide();
+		$('#start_over').hide();
+		var canvas = document.getElementById('preview');
+		var data_url = canvas.toDataURL("image/jpeg");
+		// generate the FOTD, print to image, display front side
+		id_number = update_id()
+		$.post("assets/php/generate_card.php", { 
+			patron_fname: $('#fname').val(),
+			patron_lname: $('#lname').val(),
+			patron_mname: $('#mname').val(),
+			patron_mugshot: data_url,
+			barcode: id_number
+			},
+			function(data) {
+				var d = new Date();
+				var miliseconds = d.getMilliseconds(); 
+				$('#card_preview_image').attr("src","assets/php/show_card_image.php?side=front&time=" + miliseconds)	
+				$('#print').show();
+				$('#view_front').show();
+				$('#view_back').show();
+				$('#start_over').show();
+		});
+	}// END Update Card Preview function
+
+	
+	//============================================================
+	// update id number
+	//============================================================
+	function update_id(){
+		if ( $("#chk_override_autogenerate" ).is(":checked")) {
+			return $('#id_number').val();
+		}else{}
+			return 'auto_generate';
+	}// END update id number
+
+	
+	//=============================================================
+	// Log off icon click 
+	//============================================================
+	$('#logoff_icon').click(function(event){
+	$.get( "assets/php/wipe_session.php", function( data ) {
+		$.post("index.php", {action:  'logout'}, function( data ) {
+			window.location='login.php'
+		});
+	});
+		
+	});	// END Log off icon click 
+	
+	//=============================================================
+	// Log off Menu click 
+	//============================================================
+	$('#mnuLogOut').click(function(event){
+		$('#logoff_icon').click();
+	});	// END Log off Menu click 
+
+	//=============================================================
+	// Start Over button click
+	//=============================================================
+	$('#start_over').click(function(c) {
+
+		// regenerate new id number?
+		//window.location=window.location;
+		//window.location='index.php';
+		window.location=window.location;
+	}); // END Start Over button click
+
+	//=============================================================
+	// Start Over Menu click
+	//============================================================
+	$('#mnuStartOver').click(function(event){
+		$('#start_over').click();
+	}); // END Start Over Menu click
+	
+	//=========================================================================
+	//  take_snapshot function
+	//=========================================================================
+	function take_snapshot() {
+		//console.log('enter function take_snapshot');
+		//image_available = true;
+		$('#btnRetake').show();
+		//	clear the thumbnail preview window
+		preview_canvas = document.getElementById("preview");
+		ctx = preview_canvas.getContext("2d");
+		ctx.clearRect(0, 0, preview_canvas.width, preview_canvas.height);
+			
+		$('#mugshot_preview_holder').css('display','block')
+		$('#btnRetake').prop('disabled',false)
+		$("#btnTakeSnapshot").css('background-color', '')
+		$("#btnTakeSnapshot").css('color', '')
+		$("#btnTakeSnapshot").prop('disabled', true)
+		$("#btnUseThisShot").prop('disabled', false)
+		$("#btnUseThisShot").css('background-color', 'green')
+		$("#btnUseThisShot").css('color', 'white')
+		$("#btnRetake").css('background-color', 'yellow')
+		$("#btnRetake").prop('disabled', false)
+		$('#btnPreviewAndPrint').show();
+		$('#btnTakeSnapshot').hide();
+		$('#divImageAdjust').show();
+		
+		var canvas = document.getElementById('canvas');// source canvas
+		var context= canvas.getContext("2d");
+		var data_url= canvas.toDataURL("image/jpeg");
+		$('#snapshot').attr('src',data_url);
+		$('#video').hide();
+		$('#canvas').hide();
+		$('#snapshot').show();
+		selected_width = 0;
+		selected_height = 0;
+		$('#snapshot').imgAreaSelect({ 
+			aspectRatio: '3:4', 
+			handles: true,
+			onSelectChange: updatePreview,
+			onSelectEnd: updatePreview,
+			//onSelectEnd: backup_preview
+		});
+	}//  END take_snapshot function
+
+	//=========================================================================
+	// untake_snapshot function
+	//=========================================================================
+	function untake_snapshot(){
+	   $('#snapshot').imgAreaSelect({remove:true});
+		var canvas = document.getElementById('preview');
+		var context = canvas.getContext('2d');
+		context.clearRect(0, 0, canvas.width, canvas.height);
+		canvas = document.getElementById('canvas');
+		context = canvas.getContext('2d');
+		context.clearRect(0, 0, canvas.width, canvas.height);
+		$('#snapshot').attr('src', '#');
+		$("#btnTakeSnapshot").prop('disabled', false)
+		$("#btnTakeSnapshot").css('background-color', 'green')
+		$("#btnTakeSnapshot").css('color', 'white')
+		$("#btnUseThisShot").prop('disabled', true)
+		//$("#btnRetake").prop('disabled', true)
+		$("#btnUseThisShot").css('background-color', '')
+		$("#btnUseThisShot").css('color', '')
+		//$("#btnRetake").css('background-color', '')
+		$('#btnPreviewAndPrint').hide();
+		$('#mugshot_preview_holder').css('display', 'none');
+		$('#btnRetake').hide();
+		$('#video').show('fast');
+		$('#canvas').hide('fast');
+		$('#snapshot').hide('fast');
+		$('#btnTakeSnapshot').show('fast');
+		$('#divImageAdjust').hide();
+		$('#btnImageReset').click();
+	}// END untake_snapshot function
+
+	//=========================================================================
+	//  updatePreview function
+	//=========================================================================
+	function updatePreview(img, selection){
+		// from http://stackoverflow.com/questions/15032973/how-can-i-change-out-an-image-using-camanjs
+		$("#preview").removeAttr("data-caman-id");
+		var imageObj = $("#canvas")[0];
+		var canvas = $("#preview")[0];
+		var context = canvas.getContext("2d");
+		if (imageObj != null && selection.x1 != 0 && selection.y1 != 0 && selection.width != 0 && selection.height != 0) {
+			selected_width = selection.width;
+			selected_height = selection.height;
+			selected_x = selection.x;
+			selected_y = selection.y;
+			context.drawImage(imageObj, selection.x1, selection.y1, selection.width, selection.height, 0, 0, canvas.width, canvas.height);
+		}
+	}
+
+	function initialize_camera(){
+		// Put event listeners into place
+		// Grab elements, create settings, etc.
+		canvas = document.getElementById("canvas"),
+		context = canvas.getContext("2d"),
+		video = document.getElementById("video"),
+		videoObj = { "video": true },
+		errBack = function(error) {
+			console.log("Video capture error: ", error.code); 
+		};
+
+		// Put video listeners into place
+		if(navigator.getUserMedia) { // Standard
+			navigator.getUserMedia(videoObj, function(stream) {
+				video.src = stream;
+				video.play();
+			}, errBack);
+		} else if(navigator.webkitGetUserMedia) { // WebKit-prefixed
+			navigator.webkitGetUserMedia(videoObj, function(stream){
+				video.src = window.webkitURL.createObjectURL(stream);
+				video.play();
+			}, errBack);
+		}else if(navigator.mozGetUserMedia) { // Firefox-prefixed
+			navigator.mozGetUserMedia(videoObj, function(stream){
+				video.src = window.URL.createObjectURL(stream);
+				video.play();
+			}, errBack);
+		}
+
+		// Trigger photo take
+		document.getElementById("btnTakeSnapshot").addEventListener("click", function() {
+			$.playSound('assets/sounds/shutter.mp3');
+			$('#shutter_sound').remove();
+			context.drawImage(video, 0, 0, 640, 480);
+			$('#canvas').show('fast');
+			$('#video').hide('fast');
+			take_snapshot();
+		});
+	}
+	
+	function backup_preview(){
+		var preview_canvas = document.getElementById("preview");
+		var context = preview_canvas.getContext("2d");
+		preview_data_url = preview_canvas.toDataURL();		 
+		console.debug(preview_data_url);
+	}
+
+	function restore_preview(){
+		var preview = document.getElementById('preview'); //image object
+		preview.src = preview_data_url;
+	}
+	
+	
+//=========================================================================
+}); // END DOCUMENT READY
+//=========================================================================
+
+
+//=========================================================================
+// msToTime function
+//=========================================================================
+function msToTime(s) {
+  var ms = s % 1000;
+  s = (s - ms) / 1000;
+  var secs = s % 60;
+  
+  s = (s - secs) / 60;
+  var mins = s % 60;
+  var hrs = (s - mins) / 60;
+  secs = pad(secs, 2 )
+  return  mins + ':' + secs;
+}// END msToTime function
+
+//=========================================================================
+// pad function
+//=========================================================================
+function pad (str, max) {
+  str = str.toString();
+  return str.length < max ? pad("0" + str, max) : str;
+}// END pad function
+
+
+//=============================================================
+// check Coordinates function
+//=============================================================
+//function checkCoords()
+//{
+//	if (parseInt($('#w').val())>0) return true;
+//		alert('Please draw a box around patron\'s face and then click the \'crop\' button.');
+//	return false;
+//	};// END check Coordinates function
+
+//=============================================================
+// Update Timeout message function
+//=============================================================
+function update_timout_message(){
+	var time_left_mili = $( document ).idleTimer("getRemainingTime");
+	var time_left = msToTime(time_left_mili)
+	$('#timeout').text('page will reload in ' + time_left);
+}// END Update Timeout message function

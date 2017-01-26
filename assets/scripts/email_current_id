@@ -1,0 +1,10 @@
+#!/usr/bin/php
+<?PHP
+ini_set('memory_limit', '512M');
+include_once "/var/www/html/new_way/assets/php/ezsql/shared/ez_sql_core.php";
+include_once "/var/www/html/new_way/assets/php/ezsql/mysqli/ez_sql_mysqli.php";
+$db = new ezSQL_mysqli('root','op3n4m3','id_cards','localhost');
+
+$current_id = $db->get_var("SELECT value FROM variables where variable = 'current_id' LIMIT 1");
+
+mail('mehle@willardlibrary.org', 'Current ID number on ID_Generator', $current_id);

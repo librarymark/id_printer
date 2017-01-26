@@ -1,0 +1,51 @@
+#!/usr/bin/php
+<?PHP
+ini_set('memory_limit', '64M');
+
+$patron_lname = $argv[1];
+$patron_fname = $argv[2];
+$patron_mname = $argv[3];
+$barcode_text = $argv[4];
+$station_ip   = $argv[5];
+$card_template_filename  = $argv[6];
+$card_images_generator = $argv[7];
+
+include_once "/var/www/html/assets/php/id_generator.inc.php";
+$card_images_generator = '/var/www/html/patron/assets/scripts/generate_card_images';
+$libre_office = '/usr/lib/libreoffice/program/soffice.bin';
+
+$var_folder = "/var/www/html/var/".$station_ip;
+
+$barcode_image = shell_exec($barcode_generator . ' ' . $barcode_text);
+$barcode_image_64 = base64_encode($barcode_image);
+
+$mugshot_cropped = $var_folder . '/' .$station_ip .'-cropped.jpg'; 
+$mugshot_cropped_data = file_get_contents($mugshot_cropped);
+$mugshot_cropped_64 = base64_encode($mugshot_cropped_data);
+
+$xml_data = file_get_contents($card_template_filename);
+$xml_data = str_replace("@@MUGSHOT_IMAGE_B64@@", $mugshot_cropped_64, $xml_data);
+$xml_data = str_replace("@@BARCODE_IMAGE_64@@",  $barcode_image_64,   $xml_data);
+$xml_data = str_replace("@@LAST_NAME@@",         $patron_lname,      $xml_data);
+$xml_data = str_replace("@@FIRST_NAME@@",        $patron_fname,     $xml_data);
+$xml_data = str_replace("@@MIDDLE_INITIAL@@",    $patron_mname, $xml_data);
+$xml_data = str_replace("@@BARCODE_TEXT@@",      $barcode_text,   $xml_data);
+
+$fodt_file = $var_folder . '/'. $station_ip . ".fotd";
+
+$fodt_file_handle = fopen($fodt_file, 'w');
+fwrite($fodt_file_handle,$xml_data);
+fclose($fodt_file_handle);
+chmod($fodt_file, 0777);
+
+
+
+// generate the preview files
+//$generate_preview_pdf_cmd = "{$sudo} {$unoconv} -f pdf -d document -o '{$var_folder}/{$station_ip}.pdf' '{$fodt_file}'  /dev/null 2>&1 ";
+$generate_preview_pdf_cmd = "{$sudo} {$unoconv} -f pdf -d document '{$fodt_file}'  /dev/null 2>&1 ";
+error_log("card_image_generator: " .$generate_preview_pdf_cmd );
+exec($generate_preview_pdf_cmd, $result_generate_pdf);
+
+// the path to the PDF might look odd here, but unoconv has a bug that gives the output file an added folder. 
+$generate_preview_png_cmd = "{$sudo} {$convert} -density 300 {$var_folder}/{$station_ip}.pdf {$var_folder}/{$station_ip}.png";
+exec($generate_preview_png_cmd, $result_generate_png);

@@ -1,0 +1,60 @@
+button {
+	width: 67px;
+	height: 40px;
+	background-color: #green;
+    -moz-border-radius: 6px;
+    -webkit-border-radius: 6px;
+    border-radius: 6px;
+	border: 2px solid grey;
+	padding: 5px;
+}
+button[disabled] { background-color:#E9E9E6; color:#808080;
+border-width:2px;
+border-color:#808080;
+	-moz-border-radius: 15px;
+	-webkit-border-radius: 15px;
+
+}
+
+/*input{
+
+}
+*/
+.image_adjust {
+	width:30px; 
+	height:20px; 
+	font-size:9px; 
+	padding:1px;
+	margin:1px;
+}
+
+.v {
+    color: #aaa;
+    font-size: 0.7em;
+    position: absolute;
+    right: 0;
+}
+
+label {
+    display: block;
+    font-size: 0.9em;
+    margin: 6px 0 0px;
+    position: relative;
+}
+.v {
+    color: #555;
+    font-size: 0.7em;
+    position: absolute;
+    right: 0;
+}
+#left-col {
+    float: left;
+    font-size: 0.7em;
+    width: 250px;
+}
+
+#btnPreviewAndPrint{
+	background-color:green;
+	color:white;
+	
+}

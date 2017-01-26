@@ -1,0 +1,35 @@
+BODY {
+
+	color: #000000;
+	background-color: #ffffff;
+	font-family:  Helvetica, Tahoma, Verdana, Arial, Sans Serif;
+}
+
+H1 {
+	color: #000000;
+	font-weight: bold;
+	font-size: 32px;
+	font-family:  Helvetica, Tahoma, Verdana, Arial, Sans Serif;
+	text-align: center;
+}
+
+
+P {
+	color: #000000;
+	font-weight: bold;
+	font-size: 14px;
+	font-family:  Courier, Helvetica, Tahoma, Verdana, Arial, Sans Serif;
+	color: red;
+	text-align: center;
+}
+
+A {
+	text-decoration: underline;
+	color: #003F80;
+	text-align: center;
+}
+
+A:Hover {
+	text-decoration: none;
+	color: #3163CE;
+}

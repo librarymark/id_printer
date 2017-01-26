@@ -1,0 +1,25 @@
+#!/usr/bin/php
+<?PHP
+ini_set('memory_limit', '512M');
+require_once('/var/www/html/assets/barcodegen/class/BCGFontFile.php');
+require_once('/var/www/html/assets/barcodegen/class/BCGColor.php');
+require_once('/var/www/html/assets/barcodegen/class/BCGDrawing.php');
+require_once('/var/www/html/assets/barcodegen/class/BCGcodabar.barcode.php');
+
+$barcode_text = $argv[1];
+
+$colorFront = new BCGColor(0, 0, 0);
+$colorBack =  new BCGColor(255, 255, 255);
+
+$code = new BCGcodabar(); // Or another class name from the manual
+$code->setScale(2); // Resolution
+$code->setThickness(30); // Thickness
+$code->setForegroundColor($colorFront); // Color of bars
+$code->setBackgroundColor($colorBack); // Color of spaces
+$code->setFont(0); // Font (or 0)
+$code->parse('A'.$barcode_text.'A'); // Text
+
+$drawing = new BCGDrawing('', $colorBack);
+$drawing->setBarcode($code);
+$drawing->draw();
+$drawing->finish(BCGDrawing::IMG_FORMAT_PNG);

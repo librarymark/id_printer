@@ -1,0 +1,53 @@
+#!/usr/bin/php
+<?PHP
+
+ini_set('memory_limit', '512M');
+require_once('/var/www/html/assets/barcodegen/class/BCGFontFile.php');
+require_once('/var/www/html/assets/barcodegen/class/BCGColor.php');
+require_once('/var/www/html/assets/barcodegen/class/BCGDrawing.php');
+require_once('/var/www/html/assets/barcodegen/class/BCGcodabar.barcode.php');
+
+$barcode_text = $argv[1];
+$checksum = generate_codabar_checksum($barcode_text);
+$barcode_text = $barcode_text.$checksum;
+
+$colorFront = new BCGColor(0, 0, 0);
+$colorBack =  new BCGColor(255, 255, 255);
+
+$code = new BCGcodabar(); // Or another class name from the manual
+$code->setScale(2); // Resolution
+$code->setThickness(30); // Thickness
+$code->setForegroundColor($colorFront); // Color of bars
+$code->setBackgroundColor($colorBack); // Color of spaces
+$code->setFont(0); // Font (or 0)
+$code->parse('A'.$barcode_text.'A'); // Text
+
+$drawing = new BCGDrawing('', $colorBack);
+$drawing->setBarcode($code);
+$drawing->draw();
+$drawing->finish(BCGDrawing::IMG_FORMAT_PNG);
+
+
+function generate_codabar_checksum($num_in){
+	$sum = 0;
+	$check_digit = 0;
+	for($x=0; $x<=12; $x++){
+		if($x&1){//  even digits
+			$sum += substr($num_in,$x,1);
+	   }else{// odd digits
+			$odd_digit = substr($num_in,$x,1);
+			$odd_digit = $odd_digit *2;
+			if ($odd_digit >=10){
+				$odd_digit = $odd_digit -9;
+			}
+			$sum += $odd_digit;
+		}
+	}
+	$remainder = $sum % 10;
+	if ($remainder == 0){
+		$check_digit = 0;
+	}else{
+		$check_digit = 10 - $remainder;
+	}
+	return $check_digit;	
+}

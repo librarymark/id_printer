@@ -1,0 +1,36 @@
+<html>
+<head>
+<title>Login Page</title>
+<style type="text/css">
+<!--
+body {font-family: Helvetica, Tahoma, Arial, sans-serif; font-size: 12px; text-align: center; font-weight: normal;}
+h1 {font-family: Helvetica, Tahoma, Arial, sans-serif; font-size: 28px; text-align: center; font-weight: bold;}
+td {font-family: Helvetica, Tahoma, Arial, sans-serif; font-size: 14px; font-weight: normal;}
+-->
+</style>
+</head>
+<body bgcolor="#e9e9e9">
+<center>
+<h1>DEFAULT LOGIN PAGE</h1>
+<p><i>Please run the Adminpro Class Setup to create the MySQL table and a default Administrator, required to login. If you have already done that, use <b>admin</b> as username and <b>admin</b> as password to login. You will then have access to the AdminPro Class User Management Area.
+
+</i></p>
+<form action="adminuser.php" method="POST">
+<input type="hidden" name="action" value="login">
+<table align="center" cellpadding="2" cellspacing="0">
+<tr><td align="right">Username:</td><td><input type="text" name="userName"></td></tr>
+<tr><td align="right">Password:</td><td><input type="password" name="userPass"></td></tr>
+<tr><td>Remember this login*:</td><td>
+<input type="radio" name="userRemember" value="no" checked>No
+<input type="radio" name="userRemember" value="yes">Yes
+
+</td></tr>
+<tr><td></td><td><input type="submit" value="Login"></td></tr>
+</form>
+</table>
+<br><i>
+* Please note: you have to accept cookies, if you would like the system to remember your login. You should also set in the configuration file the $globalConfig['enblRemember']=true to enable this function. The default value is 'false'.
+</i>
+</center>
+</body>
+</html>

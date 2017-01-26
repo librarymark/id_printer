@@ -1,0 +1,2 @@
+<?PHP
+header("Location: patron/");
